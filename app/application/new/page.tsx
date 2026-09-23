@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function NewApplicationPage() {
   const router = useRouter();
@@ -32,7 +33,6 @@ export default function NewApplicationPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     setLoading(true);
 
     try {
@@ -45,29 +45,44 @@ export default function NewApplicationPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create application");
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create application");
       }
 
-      router.push("/applications");
+      router.push("/dashboard");
       router.refresh();
     } catch (error) {
       console.error(error);
-      alert("Something went wrong");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong"
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <main className="min-h-screen bg-gray-50 p-8 text-black">
       <div className="mx-auto max-w-2xl">
-        <h1 className="mb-2 text-3xl font-bold">
-          Add Application
-        </h1>
 
-        <p className="mb-8 text-gray-600">
-          Track a new job or internship application.
-        </p>
+        <div className="mb-8">
+          <Link
+            href="/dashboard"
+            className="text-sm text-gray-500 hover:text-black"
+          >
+            ← Back to Dashboard
+          </Link>
+
+          <h1 className="mt-4 text-3xl font-bold">
+            Add Application
+          </h1>
+
+          <p className="mt-2 text-gray-600">
+            Add a job or internship to your tracker.
+          </p>
+        </div>
 
         <form
           onSubmit={handleSubmit}
@@ -84,7 +99,7 @@ export default function NewApplicationPage() {
               onChange={handleChange}
               placeholder="e.g. Google"
               required
-              className="w-full rounded-lg border p-3"
+              className="w-full rounded-lg border p-3 outline-none focus:ring-2 focus:ring-black"
             />
           </div>
 
@@ -99,7 +114,7 @@ export default function NewApplicationPage() {
               onChange={handleChange}
               placeholder="e.g. Software Engineer"
               required
-              className="w-full rounded-lg border p-3"
+              className="w-full rounded-lg border p-3 outline-none focus:ring-2 focus:ring-black"
             />
           </div>
 
@@ -112,7 +127,7 @@ export default function NewApplicationPage() {
               name="location"
               value={form.location}
               onChange={handleChange}
-              placeholder="e.g. Bengaluru / Remote"
+              placeholder="e.g. Mumbai / Bengaluru / Remote"
               className="w-full rounded-lg border p-3"
             />
           </div>
@@ -157,13 +172,13 @@ export default function NewApplicationPage() {
               onChange={handleChange}
               className="w-full rounded-lg border p-3"
             >
-              <option>Wishlist</option>
-              <option>Applied</option>
-              <option>OA</option>
-              <option>Interview</option>
-              <option>HR</option>
-              <option>Offer</option>
-              <option>Rejected</option>
+              <option value="Wishlist">Wishlist</option>
+              <option value="Applied">Applied</option>
+              <option value="OA">OA</option>
+              <option value="Interview">Interview</option>
+              <option value="HR">HR</option>
+              <option value="Offer">Offer</option>
+              <option value="Rejected">Rejected</option>
             </select>
           </div>
 
@@ -190,7 +205,7 @@ export default function NewApplicationPage() {
               name="notes"
               value={form.notes}
               onChange={handleChange}
-              placeholder="Add notes..."
+              placeholder="Add notes about this application..."
               rows={4}
               className="w-full rounded-lg border p-3"
             />
@@ -199,12 +214,12 @@ export default function NewApplicationPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-black px-4 py-3 font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="w-full rounded-lg bg-black px-4 py-3 font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Saving..." : "Add Application"}
           </button>
         </form>
       </div>
-    </div>
+    </main>
   );
 }
