@@ -326,7 +326,7 @@ export default function ApplicationsPage() {
         </div>
 
         <Link
-          href="/applications/new"
+          href="/application/new"
           className="rounded-lg bg-black px-5 py-3
                      text-sm font-medium text-white"
         >
