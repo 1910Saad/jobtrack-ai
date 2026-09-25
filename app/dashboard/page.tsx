@@ -73,7 +73,7 @@ export default async function DashboardPage() {
           </h2>
 
           <Link
-            href="/applications/new"
+            href="/application/new"
             className="rounded-lg bg-black px-5 py-3 font-medium text-white hover:bg-gray-800"
           >
             + Add Application
@@ -184,6 +184,10 @@ export default async function DashboardPage() {
                     <th className="px-4 py-3">
                       Applied
                     </th>
+
+                    <th className="px-4 py-3 text-left">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
 
@@ -214,6 +218,15 @@ export default async function DashboardPage() {
 
                         <td className="px-4 py-4 text-gray-600">
                           {application.appliedDate || "—"}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/applications/${application.id}/edit`}
+                            className="text-blue-600 hover:underline"
+                          >
+                            Edit
+                          </Link>
                         </td>
                       </tr>
                     )
