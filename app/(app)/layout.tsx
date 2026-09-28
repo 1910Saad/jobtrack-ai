@@ -83,7 +83,8 @@ export default function AppLayout({
               Insights
             </p>
 
-            <ComingSoonItem
+            <NavItem
+              href="/analytics"
               icon="▥"
               label="Analytics"
             />

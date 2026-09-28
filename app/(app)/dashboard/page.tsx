@@ -100,7 +100,14 @@ export default async function DashboardPage() {
           </Link>
 
           <Link
-            href="/applications/new"
+            href="/analyzer"
+            className="inline-flex items-center justify-center rounded-lg border bg-white px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+          >
+            🤖 AI Analyzer
+          </Link>
+
+          <Link
+            href="/application/new"
             className="inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800"
           >
             + Add Application
