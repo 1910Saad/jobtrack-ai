@@ -62,7 +62,8 @@ export default function AppLayout({
               AI Tools
             </p>
 
-            <ComingSoonItem
+            <NavItem
+              href="/analyzer"
               icon="✦"
               label="AI Job Analyzer"
             />
