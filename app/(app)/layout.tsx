@@ -127,16 +127,26 @@ export default function AppLayout({
         <div className="flex min-w-0 flex-1 flex-col">
 
           {/* Mobile Header */}
-          <header className="flex items-center justify-between border-b bg-white px-5 py-4 md:hidden">
-            <Link
-              href="/dashboard"
-              className="text-lg font-bold"
-            >
-              JobTrack{" "}
-              <span className="text-blue-600">AI</span>
-            </Link>
+          <header className="border-b bg-white md:hidden">
+            <div className="flex items-center justify-between px-5 py-4">
+              <Link
+                href="/dashboard"
+                className="text-lg font-bold"
+              >
+                JobTrack{" "}
+                <span className="text-blue-600">AI</span>
+              </Link>
 
-            <UserButton />
+              <UserButton />
+            </div>
+
+            <nav className="flex gap-2 overflow-x-auto border-t px-4 py-3">
+              <MobileNavItem href="/dashboard" label="Dashboard" />
+              <MobileNavItem href="/applications" label="Applications" />
+              <MobileNavItem href="/application/new" label="+ Add" />
+              <MobileNavItem href="/analyzer" label="AI Analyzer" />
+              <MobileNavItem href="/analytics" label="Analytics" />
+            </nav>
           </header>
 
           <main className="flex-1">
@@ -168,18 +178,16 @@ function NavItem({
   return (
     <Link
       href={href}
-      className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-        isActive
+      className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${isActive
           ? "bg-blue-50 text-blue-700"
           : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-      }`}
+        }`}
     >
       <span
-        className={`flex h-6 w-6 items-center justify-center rounded-md text-base ${
-          isActive
+        className={`flex h-6 w-6 items-center justify-center rounded-md text-base ${isActive
             ? "bg-blue-100"
             : "bg-gray-100"
-        }`}
+          }`}
       >
         {icon}
       </span>
@@ -210,5 +218,33 @@ function ComingSoonItem({
         Soon
       </span>
     </div>
+  );
+}
+
+function MobileNavItem({
+  href,
+  label,
+}: {
+  href: string;
+  label: string;
+}) {
+  const pathname = usePathname();
+
+  const isActive =
+    pathname === href ||
+    (href !== "/dashboard" &&
+      pathname.startsWith(href));
+
+  return (
+    <Link
+      href={href}
+      className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition ${
+        isActive
+          ? "bg-blue-50 text-blue-700"
+          : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+      }`}
+    >
+      {label}
+    </Link>
   );
 }
