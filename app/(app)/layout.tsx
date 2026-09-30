@@ -68,7 +68,8 @@ export default function AppLayout({
               label="AI Job Analyzer"
             />
 
-            <ComingSoonItem
+            <NavItem
+              href="/resume-matcher"
               icon="▤"
               label="Resume Matcher"
             />
@@ -179,14 +180,14 @@ function NavItem({
     <Link
       href={href}
       className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${isActive
-          ? "bg-blue-50 text-blue-700"
-          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        ? "bg-blue-50 text-blue-700"
+        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
         }`}
     >
       <span
         className={`flex h-6 w-6 items-center justify-center rounded-md text-base ${isActive
-            ? "bg-blue-100"
-            : "bg-gray-100"
+          ? "bg-blue-100"
+          : "bg-gray-100"
           }`}
       >
         {icon}
@@ -238,11 +239,10 @@ function MobileNavItem({
   return (
     <Link
       href={href}
-      className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition ${
-        isActive
+      className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition ${isActive
           ? "bg-blue-50 text-blue-700"
           : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-      }`}
+        }`}
     >
       {label}
     </Link>
