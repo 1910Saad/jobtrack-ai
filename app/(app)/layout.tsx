@@ -74,6 +74,12 @@ export default function AppLayout({
               label="Resume Matcher"
             />
 
+            <NavItem
+              href="/resume-matcher/history"
+              icon="◷"
+              label="Match History"
+            />
+
             <ComingSoonItem
               icon="◉"
               label="Interview Prep"
@@ -240,8 +246,8 @@ function MobileNavItem({
     <Link
       href={href}
       className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition ${isActive
-          ? "bg-blue-50 text-blue-700"
-          : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+        ? "bg-blue-50 text-blue-700"
+        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
         }`}
     >
       {label}

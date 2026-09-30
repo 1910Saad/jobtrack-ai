@@ -2,86 +2,97 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import mammoth from "mammoth";
 import { extractText } from "unpdf";
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { resumeMatchers } from "@/db/schema";
 
 export const runtime = "nodejs";
 
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+    apiKey: process.env.GEMINI_API_KEY,
 });
 
 export async function POST(request: Request) {
-  try {
-    const formData = await request.formData();
+    try {
+        const formData = await request.formData();
 
-    const resume = formData.get("resume");
-    const jobDescription = formData.get("jobDescription");
+        const resume = formData.get("resume");
+        const jobDescription = formData.get("jobDescription");
+        const { userId } = await auth();
 
-    if (!(resume instanceof File)) {
-      return NextResponse.json(
-        { error: "Resume file is required" },
-        { status: 400 }
-      );
-    }
+        if (!userId) {
+            return NextResponse.json(
+                { error: "Unauthorized" },
+                { status: 401 }
+            );
+        }
 
-    if (
-      typeof jobDescription !== "string" ||
-      !jobDescription.trim()
-    ) {
-      return NextResponse.json(
-        { error: "Job description is required" },
-        { status: 400 }
-      );
-    }
+        if (!(resume instanceof File)) {
+            return NextResponse.json(
+                { error: "Resume file is required" },
+                { status: 400 }
+            );
+        }
 
-    const fileName = resume.name.toLowerCase();
+        if (
+            typeof jobDescription !== "string" ||
+            !jobDescription.trim()
+        ) {
+            return NextResponse.json(
+                { error: "Job description is required" },
+                { status: 400 }
+            );
+        }
 
-    const buffer = Buffer.from(
-      await resume.arrayBuffer()
-    );
+        const fileName = resume.name.toLowerCase();
 
-    let resumeText = "";
+        const buffer = Buffer.from(
+            await resume.arrayBuffer()
+        );
 
-    // PDF
-    if (fileName.endsWith(".pdf")) {
-      const { text } = await extractText(
-        new Uint8Array(buffer)
-      );
+        let resumeText = "";
 
-      resumeText = Array.isArray(text)
-        ? text.join("\n")
-        : String(text);
-    }
+        // PDF
+        if (fileName.endsWith(".pdf")) {
+            const { text } = await extractText(
+                new Uint8Array(buffer)
+            );
 
-    // DOCX
-    else if (fileName.endsWith(".docx")) {
-      const result = await mammoth.extractRawText({
-        buffer,
-      });
+            resumeText = Array.isArray(text)
+                ? text.join("\n")
+                : String(text);
+        }
 
-      resumeText = result.value;
-    }
+        // DOCX
+        else if (fileName.endsWith(".docx")) {
+            const result = await mammoth.extractRawText({
+                buffer,
+            });
 
-    else {
-      return NextResponse.json(
-        {
-          error:
-            "Unsupported resume format. Please upload PDF or DOCX.",
-        },
-        { status: 400 }
-      );
-    }
+            resumeText = result.value;
+        }
 
-    if (!resumeText.trim()) {
-      return NextResponse.json(
-        {
-          error:
-            "Could not extract text from the resume.",
-        },
-        { status: 400 }
-      );
-    }
+        else {
+            return NextResponse.json(
+                {
+                    error:
+                        "Unsupported resume format. Please upload PDF or DOCX.",
+                },
+                { status: 400 }
+            );
+        }
 
-    const prompt = `
+        if (!resumeText.trim()) {
+            return NextResponse.json(
+                {
+                    error:
+                        "Could not extract text from the resume.",
+                },
+                { status: 400 }
+            );
+        }
+
+        const prompt = `
 You are a resume-to-job-description matching assistant.
 
 Compare the candidate resume with the job description.
@@ -124,51 +135,64 @@ JOB DESCRIPTION:
 ${jobDescription}
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-lite",
-      contents: prompt,
-    });
+        const response = await ai.models.generateContent({
+            model: "gemini-3.1-flash-lite",
+            contents: prompt,
+        });
 
-    const text = response.text?.trim();
+        const text = response.text?.trim();
 
-    if (!text) {
-      throw new Error(
-        "AI returned an empty response"
-      );
-    }
+        if (!text) {
+            throw new Error(
+                "AI returned an empty response"
+            );
+        }
 
-    const cleaned = text
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
+        const cleaned = text
+            .replace(/^```json\s*/i, "")
+            .replace(/^```\s*/i, "")
+            .replace(/\s*```$/i, "")
+            .trim();
 
-    const result = JSON.parse(cleaned);
+        const result = JSON.parse(cleaned);
 
-    return NextResponse.json(result);
+        await db.insert(resumeMatchers).values({
+            userId,
+            resumeName: resume.name,
+            jobDescription,
+            matchScore: result.matchScore,
+            candidateSkills: result.candidateSkills,
+            matchingSkills: result.matchingSkills,
+            missingSkills: result.missingSkills,
+            jobRequirements: result.jobRequirements,
+            recommendations: result.recommendations,
+            summary: result.summary,
+        });
+
+        return NextResponse.json(result);
     } catch (error: any) {
-    console.error("Resume matcher error:", error);
+        console.error("Resume matcher error:", error);
 
-    const status = error?.status;
+        const status = error?.status;
 
-    if (status === 429) {
-      return NextResponse.json(
-        {
-          error:
-            "AI quota exceeded. Please try again later or configure a Gemini API project with billing enabled.",
-        },
-        { status: 429 }
-      );
+        if (status === 429) {
+            return NextResponse.json(
+                {
+                    error:
+                        "AI quota exceeded. Please try again later or configure a Gemini API project with billing enabled.",
+                },
+                { status: 429 }
+            );
+        }
+
+        return NextResponse.json(
+            {
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to analyze resume against job description",
+            },
+            { status: 500 }
+        );
     }
-
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to analyze resume against job description",
-      },
-      { status: 500 }
-    );
-  }
 }
