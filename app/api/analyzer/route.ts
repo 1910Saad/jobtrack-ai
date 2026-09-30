@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 
+const apiKey = process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+  console.error("GEMINI_API_KEY is not configured");
+}
+
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey,
 });
-
-const MODEL = "gemini-3.8-flash";
-
-const sleep = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function POST(request: Request) {
   try {
@@ -25,10 +26,19 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Gemini API key is not configured" },
+        { status: 500 }
+      );
+    }
+
     const prompt = `
 Analyze the following job description.
 
-Return ONLY valid JSON with this structure:
+Return ONLY valid JSON.
+
+Use exactly this structure:
 
 {
   "jobTitle": "",
@@ -43,63 +53,28 @@ Return ONLY valid JSON with this structure:
 }
 
 Rules:
-- Keep the information grounded in the job description.
+- Ground everything in the provided job description.
 - Do not invent requirements.
-- Use short, useful items in arrays.
-- If something is not mentioned, use an empty string or empty array.
-- Do not wrap the JSON in markdown.
+- Keep array items short and useful.
+- If something is not mentioned, return an empty string or empty array.
+- Do not return Markdown.
+- Do not wrap the JSON in code fences.
 
 JOB DESCRIPTION:
 
 ${jobDescription}
 `;
 
-    let response;
-
-    // Retry temporary Gemini availability errors.
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        response = await ai.models.generateContent({
-          model: MODEL,
-          contents: prompt,
-        });
-
-        break;
-      } catch (error: any) {
-        console.error(
-          `Gemini attempt ${attempt} failed:`,
-          error
-        );
-
-        const status = error?.status;
-
-        // Only retry temporary service errors.
-        if (status !== 503 || attempt === 3) {
-          throw error;
-        }
-
-        // 2s → 4s
-        await sleep(attempt * 2000);
-      }
-    }
-
-    if (!response) {
-      return NextResponse.json(
-        {
-          error:
-            "The AI service is temporarily unavailable. Please try again shortly.",
-        },
-        { status: 503 }
-      );
-    }
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: prompt,
+    });
 
     const text = response.text?.trim();
 
     if (!text) {
       return NextResponse.json(
-        {
-          error: "AI returned an empty response. Please try again.",
-        },
+        { error: "AI returned an empty response" },
         { status: 502 }
       );
     }
@@ -114,17 +89,11 @@ ${jobDescription}
 
     try {
       result = JSON.parse(cleaned);
-    } catch (parseError) {
-      console.error(
-        "Failed to parse Gemini response:",
-        cleaned
-      );
+    } catch {
+      console.error("Invalid JSON returned by Gemini:", text);
 
       return NextResponse.json(
-        {
-          error:
-            "AI returned an invalid response. Please try again.",
-        },
+        { error: "AI returned an invalid analysis format" },
         { status: 502 }
       );
     }
@@ -133,13 +102,35 @@ ${jobDescription}
   } catch (error: any) {
     console.error("Analyzer error:", error);
 
-    if (error?.status === 503) {
+    const status = error?.status;
+
+    if (status === 503) {
       return NextResponse.json(
         {
           error:
-            "The AI service is currently busy. Please try again in a few seconds.",
+            "The AI service is temporarily busy. Please try again in a moment.",
         },
         { status: 503 }
+      );
+    }
+
+    if (status === 429) {
+      return NextResponse.json(
+        {
+          error:
+            "AI usage limit reached. Please try again later.",
+        },
+        { status: 429 }
+      );
+    }
+
+    if (status === 404) {
+      return NextResponse.json(
+        {
+          error:
+            "The configured Gemini model is unavailable. Please check the model configuration.",
+        },
+        { status: 502 }
       );
     }
 

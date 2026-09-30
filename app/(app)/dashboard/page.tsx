@@ -94,7 +94,7 @@ export default async function DashboardPage() {
 
           <Link
             href="/analytics"
-            className="rounded-lg border bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center justify-center rounded-lg border bg-white px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             📊 Analytics
           </Link>
