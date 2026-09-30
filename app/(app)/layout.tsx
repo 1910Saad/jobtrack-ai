@@ -74,12 +74,6 @@ export default function AppLayout({
               label="Resume Matcher"
             />
 
-            <NavItem
-              href="/resume-matcher/history"
-              icon="◷"
-              label="Match History"
-            />
-
             <ComingSoonItem
               icon="◉"
               label="Interview Prep"
