@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { jobAnalyzers } from "@/db/schema";
 
 const apiKey = process.env.GEMINI_API_KEY;
-
-if (!apiKey) {
-  console.error("GEMINI_API_KEY is not configured");
-}
 
 const ai = new GoogleGenAI({
   apiKey,
@@ -13,6 +12,16 @@ const ai = new GoogleGenAI({
 
 export async function POST(request: Request) {
   try {
+    // Get logged-in user
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const { jobDescription } = await request.json();
 
     if (
@@ -98,7 +107,45 @@ ${jobDescription}
       );
     }
 
-    return NextResponse.json(result);
+    // Save analysis to database
+    const [savedAnalysis] = await db
+      .insert(jobAnalyzers)
+      .values({
+        userId,
+
+        jobTitle: result.jobTitle || null,
+
+        jobDescription,
+
+        summary: result.summary || null,
+
+        requiredSkills: Array.isArray(result.requiredSkills)
+          ? result.requiredSkills
+          : [],
+
+        preferredSkills: Array.isArray(result.preferredSkills)
+          ? result.preferredSkills
+          : [],
+
+        keywords: Array.isArray(result.keywords)
+          ? result.keywords
+          : [],
+
+        responsibilities: Array.isArray(result.responsibilities)
+          ? result.responsibilities
+          : [],
+
+        preparationTopics: Array.isArray(result.preparationTopics)
+          ? result.preparationTopics
+          : [],
+
+        experience: result.experience || null,
+
+        education: result.education || null,
+      })
+      .returning();
+
+    return NextResponse.json(savedAnalysis);
   } catch (error: any) {
     console.error("Analyzer error:", error);
 

@@ -75,14 +75,25 @@ export default function AnalyzerPage() {
             ← Dashboard
           </Link>
 
-          <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900">
-            AI Job Analyzer
-          </h1>
+          <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                AI Job Analyzer
+              </h1>
 
-          <p className="mt-2 text-sm text-gray-500">
-            Paste a job description and analyze the skills,
-            requirements, and keywords.
-          </p>
+              <p className="mt-2 text-sm text-gray-500">
+                Paste a job description and analyze the skills,
+                requirements, and keywords.
+              </p>
+            </div>
+
+            <Link
+              href="/analyzer/history"
+              className="inline-flex items-center justify-center rounded-lg border bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+            >
+              View History
+            </Link>
+          </div>
         </div>
 
         {/* Input */}
@@ -216,7 +227,7 @@ Requirements:
               </h2>
 
               {result.responsibilities &&
-              result.responsibilities.length > 0 ? (
+                result.responsibilities.length > 0 ? (
                 <ul className="mt-4 space-y-3">
                   {result.responsibilities.map(
                     (item, index) => (

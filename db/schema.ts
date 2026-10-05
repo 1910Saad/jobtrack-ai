@@ -68,3 +68,48 @@ export const resumeMatchers = pgTable("resume_matchers", {
     .defaultNow()
     .notNull(),
 });
+
+export const jobAnalyzers = pgTable("job_analyzers", {
+  id: serial("id").primaryKey(),
+
+  userId: varchar("user_id", { length: 255 }).notNull(),
+
+  jobTitle: varchar("job_title", { length: 255 }),
+
+  jobDescription: text("job_description").notNull(),
+
+  summary: text("summary"),
+
+  requiredSkills: jsonb("required_skills")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+
+  preferredSkills: jsonb("preferred_skills")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+
+  keywords: jsonb("keywords")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+
+  responsibilities: jsonb("responsibilities")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+
+  preparationTopics: jsonb("preparation_topics")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+
+  experience: text("experience"),
+
+  education: text("education"),
+
+  createdAt: timestamp("created_at")
+    .defaultNow()
+    .notNull(),
+});
