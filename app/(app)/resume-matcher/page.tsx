@@ -69,6 +69,7 @@ export default function ResumeMatcherPage() {
         setResume(null);
     }
 
+
     async function handleAnalyze() {
         if (!resume) {
             setError("Please upload your resume first.");
@@ -80,40 +81,139 @@ export default function ResumeMatcherPage() {
             return;
         }
 
+        if (resume.size < 1 || resume.size > 5 * 1024 * 1024) {
+            setError("Resume must be between 1 byte and 5 MB.");
+            return;
+        }
+
+        const fileName = resume.name.toLowerCase();
+
+        if (!fileName.endsWith(".pdf") && !fileName.endsWith(".docx")) {
+            setError("Please upload a PDF or DOCX resume.");
+            return;
+        }
+
+        const expectedTypes: Record<string, string> = {
+            pdf: "application/pdf",
+            docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        };
+
+        const extension = fileName.endsWith(".pdf") ? "pdf" : "docx";
+        const contentType = expectedTypes[extension];
+
         setLoading(true);
         setError("");
         setResult(null);
 
+        let uploadedKey: string | null = null;
+
         try {
-            const formData = new FormData();
-
-            formData.append("resume", resume);
-            formData.append("jobDescription", jobDescription);
-
-            const response = await fetch("/api/resume-matcher", {
+            // 1. Ask our authenticated API for a short-lived S3 upload.
+            const signResponse = await fetch("/api/resume-upload", {
                 method: "POST",
-                body: formData,
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    fileName: resume.name,
+                    contentType,
+                    size: resume.size,
+                }),
             });
 
-            const data = await response.json();
+            const signedData = await signResponse.json();
 
-            if (!response.ok) {
+            if (!signResponse.ok) {
                 throw new Error(
-                    data.error || "Failed to analyze resume"
+                    signedData.error || "Could not prepare resume upload."
                 );
             }
 
+            const { uploadUrl, fields, key } = signedData;
+
+            if (
+                typeof uploadUrl !== "string" ||
+                !fields ||
+                typeof fields !== "object" ||
+                typeof key !== "string"
+            ) {
+                throw new Error("The server returned an invalid upload response.");
+            }
+
+            uploadedKey = key;
+
+            // 2. Upload the file directly from the browser to S3.
+            const uploadData = new FormData();
+
+            for (const [field, value] of Object.entries(fields)) {
+                uploadData.append(field, String(value));
+            }
+
+            uploadData.append("file", resume);
+
+            const uploadResponse = await fetch(uploadUrl, {
+                method: "POST",
+                body: uploadData,
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error(
+                    "Resume upload failed. Check the S3 bucket CORS configuration."
+                );
+            }
+
+            // 3. The server reads and validates the S3 object, runs Gemini,
+            //    saves the result to Neon, and attempts to delete the upload.
+            const analyzeResponse = await fetch("/api/resume-matcher", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    s3Key: key,
+                    resumeName: resume.name,
+                    jobDescription,
+                }),
+            });
+
+            const data = await analyzeResponse.json();
+
+            if (!analyzeResponse.ok) {
+                throw new Error(data.error || "Failed to analyze resume.");
+            }
+
             setResult(data);
+            setResume(null);
+
+            // Refresh the existing history list.
+            await loadHistory();
+
         } catch (error) {
             setError(
                 error instanceof Error
                     ? error.message
-                    : "Something went wrong"
+                    : "Something went wrong."
             );
+
+            if (uploadedKey) {
+                try {
+                    await fetch("/api/resume-upload/cleanup", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ key: uploadedKey }),
+                    });
+                } catch {
+                    // Cleanup is best-effort.
+                }
+            }
         } finally {
             setLoading(false);
         }
+
     }
+
 
     function resetAnalysis() {
         setResult(null);
