@@ -212,7 +212,7 @@ export async function POST(request: Request) {
             );
         }
 
-        // The file is now in memory. Delete the S3 copy before AI analysis.
+
         try {
             await s3.send(
                 new DeleteObjectCommand({
@@ -220,7 +220,38 @@ export async function POST(request: Request) {
                     Key: key,
                 })
             );
-            shouldDeleteUpload = false;
+
+            try {
+                await s3.send(
+                    new HeadObjectCommand({
+                        Bucket: bucket,
+                        Key: key,
+                    })
+                );
+
+                // The object is still accessible after deletion.
+                console.error("S3_DELETE_VERIFICATION_FAILED");
+            } catch (verificationError) {
+                const status =
+                    typeof verificationError === "object" &&
+                        verificationError !== null &&
+                        "$metadata" in verificationError
+                        ? (
+                            verificationError as {
+                                $metadata?: { httpStatusCode?: number };
+                            }
+                        ).$metadata?.httpStatusCode
+                        : undefined;
+
+                if (status === 404) {
+                    console.info("S3_DELETE_VERIFIED");
+                    shouldDeleteUpload = false;
+                } else {
+                    // Do not assume an access-denied or network error means
+                    // that the object was deleted.
+                    console.error("S3_DELETE_VERIFICATION_INCONCLUSIVE");
+                }
+            }
         } catch (deleteError) {
             console.error(
                 "Temporary resume cleanup failed:",
@@ -229,6 +260,8 @@ export async function POST(request: Request) {
                     : "UnknownError"
             );
         }
+
+        
 
         let resumeText = "";
 
@@ -361,8 +394,8 @@ ${jobDescription}
 
         const status =
             typeof error === "object" &&
-            error !== null &&
-            "status" in error
+                error !== null &&
+                "status" in error
                 ? (error as { status?: number }).status
                 : undefined;
 
